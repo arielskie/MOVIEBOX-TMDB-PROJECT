@@ -242,7 +242,7 @@ No posting or data submission is done through this integration. It only fetches 
 ## Example API URL
 
 Fetch popular action movies released in 2024 in the US:  
-`?with_genres=28&region=US&primary_release_year=2024&sort_by=popularity.desc`
+`discover/movie?with_genres=28&region=US&primary_release_year=2024&sort_by=popularity.desc`
 
 ---
 
