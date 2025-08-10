@@ -2,8 +2,6 @@
 
 ---
 
-## Posters
-
 ### Desktop View
 
 <table>
