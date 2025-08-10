@@ -1,4 +1,4 @@
-# MOVIEBOX - Blogger Movie & TV Template Powered by TMDB API
+# ABEFILM - Blogger Movie & TV Template Powered by TMDB API
 
 ---
 
@@ -6,34 +6,54 @@
 
 ### Desktop View
 
-![Desktop 1](https://i.imgur.com/emvLhKu.png)  
-![Desktop 2](https://i.imgur.com/HpaYdCl.png)  
-![Desktop 3](https://i.imgur.com/aAbk3u8.png)  
-![Desktop 4](https://i.imgur.com/UEIKnDD.png)  
-![Desktop 5](https://i.imgur.com/PCPAawp.png)  
+<table>
+  <tr>
+    <td><img src="https://i.imgur.com/emvLhKu.png" alt="Desktop 1" width="250"/></td>
+    <td><img src="https://i.imgur.com/HpaYdCl.png" alt="Desktop 2" width="250"/></td>
+    <td><img src="https://i.imgur.com/aAbk3u8.png" alt="Desktop 3" width="250"/></td>
+  </tr>
+  <tr>
+    <td><img src="https://i.imgur.com/UEIKnDD.png" alt="Desktop 4" width="250"/></td>
+    <td><img src="https://i.imgur.com/PCPAawp.png" alt="Desktop 5" width="250"/></td>
+    <td></td>
+  </tr>
+</table>
 
 ---
 
 ### Mobile View
 
-![Mobile 1](https://i.imgur.com/ASU7Y3x.png)  
-![Mobile 2](https://i.imgur.com/syBUaFj.png)  
-![Mobile 3](https://i.imgur.com/5KbHxst.png)  
-![Mobile 4](https://i.imgur.com/ytHpYSc.png)  
-![Mobile 5](https://i.imgur.com/rnB1UOL.png)  
-![Mobile 6](https://i.imgur.com/wHx5gwl.png)  
+<table>
+  <tr>
+    <td><img src="https://i.imgur.com/ASU7Y3x.png" alt="Mobile 1" width="150"/></td>
+    <td><img src="https://i.imgur.com/syBUaFj.png" alt="Mobile 2" width="150"/></td>
+    <td><img src="https://i.imgur.com/5KbHxst.png" alt="Mobile 3" width="150"/></td>
+  </tr>
+  <tr>
+    <td><img src="https://i.imgur.com/ytHpYSc.png" alt="Mobile 4" width="150"/></td>
+    <td><img src="https://i.imgur.com/rnB1UOL.png" alt="Mobile 5" width="150"/></td>
+    <td><img src="https://i.imgur.com/wHx5gwl.png" alt="Mobile 6" width="150"/></td>
+  </tr>
+</table>
 
 ---
 
 ### Blogger Layout
 
-![Blogger 1](https://i.imgur.com/GMshDQm.png)  
-![Blogger 2](https://i.imgur.com/0bdFr38.png)  
-![Blogger 3](https://i.imgur.com/PGTuvJc.png)  
-![Blogger 4](https://i.imgur.com/XKsePsc.png)  
-![Blogger 5](https://i.imgur.com/4cpNYcR.png)  
-![Blogger 6](https://i.imgur.com/QZETJzF.png)  
-![Blogger 7](https://i.imgur.com/auXztrH.png)  
+<table>
+  <tr>
+    <td><img src="https://i.imgur.com/GMshDQm.png" alt="Blogger 1" width="180"/></td>
+    <td><img src="https://i.imgur.com/0bdFr38.png" alt="Blogger 2" width="180"/></td>
+    <td><img src="https://i.imgur.com/PGTuvJc.png" alt="Blogger 3" width="180"/></td>
+    <td><img src="https://i.imgur.com/XKsePsc.png" alt="Blogger 4" width="180"/></td>
+  </tr>
+  <tr>
+    <td><img src="https://i.imgur.com/4cpNYcR.png" alt="Blogger 5" width="180"/></td>
+    <td><img src="https://i.imgur.com/QZETJzF.png" alt="Blogger 6" width="180"/></td>
+    <td><img src="https://i.imgur.com/auXztrH.png" alt="Blogger 7" width="180"/></td>
+    <td></td>
+  </tr>
+</table>
 
 ---
 
