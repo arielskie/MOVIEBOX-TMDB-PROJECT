@@ -63,18 +63,23 @@ Welcome to ABEFILM, a dynamic movie and TV series website built on the Blogger p
 
 ## Features
 
-- **TMDB Movie/TV Widgets:** Easy fetch movies and series details  
-- **Third party video sources:** vidsrc, etc.  
-- **Own customized Comment section**  
-- **Library**  
-- **Watchlist**  
+- **TMDB Movie/TV Widgets:** Effortlessly fetch and display detailed information about movies and TV series directly from TMDB, including posters, ratings, release dates, and summaries.  
+- **Third-party Video Sources:** Seamlessly integrate multiple third-party video providers such as vidsrc and others, giving you flexible streaming options and better availability for your users.  
+- **Custom Comment Section:** Engage your audience with a fully customized comment system tailored for your site, enabling viewers to share reviews, opinions, and discussions about their favorite movies and shows.  
+- **Library Management:** Keep track of your personal or public collection of movies and series with an easy-to-use library feature, making content organization simple and intuitive.  
+- **Watchlist:** Allow users to save movies and TV shows they want to watch later, providing a personalized experience and increasing user retention on your platform.  
 
-For Blogger Layout:  
-- Easy input and customized movie/TV widget using your own TMDB API.  
-- Use third party video sources as you wish,  
-- And More..  
+### For Blogger Layout
+
+- Simple and intuitive input system for configuring your own TMDB API key, making widget customization quick and hassle-free.  
+- Flexible support for multiple third-party video sources, enabling you to select or switch providers according to your preferences or regional availability.  
+- Responsive design optimized for Blogger, ensuring smooth performance across desktop and mobile devices.  
+- Lightweight and clean codebase designed to minimize loading times and enhance user experience.  
+- Easily extendable and customizable, allowing developers or advanced users to tailor features and styling to fit their unique needs.  
+- And much more to help you create a professional, user-friendly movie and TV series site without complex development work.  
 
 ---
+
 
 **Note:**  
 No posting or data submission is done through this integration. It only fetches and displays data from TMDB.
