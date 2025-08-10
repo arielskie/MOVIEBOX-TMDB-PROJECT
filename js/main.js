@@ -1,4 +1,3 @@
-// js/main.js
 import './helper.js';
 import './homepage.js';
 import './details.js';
