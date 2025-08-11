@@ -351,240 +351,235 @@ if (bookmarkBtn && bookmarkModal) {
         initContentRows(apiKey, loaderLogoUrl);
     }
 
- // ===================================================================
-// 3. DETAILS PAGE-SPECIFIC CODE (FINAL REPLACEMENT)
 // ===================================================================
-function initDetailsPage(API_KEY) {
-    // --- Configuration and Page Setup ---
-    const endpointEl = document.querySelector("#Text1 .widget-content");
-    const BASE_URL = endpointEl?.textContent.trim() || "https://api.themoviedb.org/3";
-    const IMG_URL = 'https://image.tmdb.org/t/p/w500';
-    const params = new URLSearchParams(window.location.search);
-    const id = params.get("id");
-    const type = params.get("type") || "movie";
-    const container = document.getElementById("movie-details-container");
+    // 3. DETAILS PAGE-SPECIFIC CODE (REWRITTEN FOR CORRECTNESS AND CLARITY)
+    // ===================================================================
+    function initDetailsPage(API_KEY) {
+        const endpointEl = document.querySelector("#Text1 .widget-content");
+        const BASE_URL = endpointEl?.textContent.trim() || "https://api.themoviedb.org/3";
+        const IMG_URL = 'https://image.tmdb.org/t/p/w500';
+        const params = new URLSearchParams(window.location.search);
+        const id = params.get("id");
+        const type = params.get("type") || "movie";
+        const container = document.getElementById("movie-details-container");
 
-    // --- State Management ---
-    // These variables will hold data for the TV show to be used by multiple functions.
-    let allSeasonsData = [];
-    let originalShowData = {};
+        let originalShowData = {};
+        let allSeasonsData = [];
 
-    /**
-     * Main function to fetch all data and orchestrate the page rendering.
-     */
-    async function fetchData() {
-        if (!id || !type) {
-            container.innerHTML = "<p>Missing content ID or type.</p>";
-            return;
-        }
-        try {
-            // Fetch primary details, credits, and ratings all at once.
-            const [detailRes, creditsRes, ratingRes] = await Promise.all([
-                fetch(`${BASE_URL}/${type}/${id}?api_key=${API_KEY}&language=en-US`),
-                fetch(`${BASE_URL}/${type}/${id}/credits?api_key=${API_KEY}&language=en-US`),
-                fetch(`${BASE_URL}/${type}/${id}/${type === "movie" ? "release_dates" : "content_ratings"}?api_key=${API_KEY}`)
-            ]);
-
-            const data = await detailRes.json();
-            const credits = await creditsRes.json();
-            const ratingData = await ratingRes.json();
-            const certification = getCertification(type, ratingData);
-
-            // If it's a TV show, we must store its original details and season data.
-            // This is the foundation for all dynamic updates.
-            if (type === "tv") {
-                originalShowData = {
-                    title: data.name,
-                    poster_path: data.poster_path,
-                    year: (data.first_air_date || "").split("-")[0]
-                };
-                allSeasonsData = data.seasons || [];
+        async function fetchData(contentId, contentType) {
+            if (!contentId || !contentType) {
+                container.innerHTML = "<p>Missing content ID or type.</p>";
+                return;
             }
+            try {
+                container.innerHTML = `<div class="loading-placeholder" style="height: 80vh; width: 100%;"></div>`;
 
-            // Render the page's main HTML structure.
-            renderDetails(data, certification);
-            
-            // Branch logic: handle TV shows and Movies differently.
-            if (type === "tv") {
-                renderSeasonsButtons(allSeasonsData); // Create the S1, S2, etc. buttons.
+                const detailRes = await fetch(`${BASE_URL}/${contentType}/${contentId}?api_key=${API_KEY}&language=en-US&append_to_response=credits,release_dates,content_ratings`);
+                if (!detailRes.ok) throw new Error('Failed to fetch content details.');
+                const data = await detailRes.json();
                 
-                // Find the first valid season (usually Season 1) to display on initial page load.
-                const firstSeason = allSeasonsData.find(s => s.season_number > 0) || allSeasonsData[0];
-                if (firstSeason) {
-                    // This first call correctly sets the poster, year, title, and episode list for Season 1.
-                    await handleSeasonChange(firstSeason.season_number);
+                // Store base data for TV shows on the first load of the page
+                if (contentType === 'tv' && !originalShowData.id) {
+                    originalShowData = {
+                        id: data.id,
+                        title: data.name,
+                        poster_path: data.poster_path,
+                        year: (data.first_air_date || "").split("-")[0]
+                    };
+                    allSeasonsData = data.seasons || [];
                 }
-            } else {
-                renderMovieEpisode(id); // Handle single movies or movie collections.
+
+                renderFullPage(data);
+
+            } catch (err) {
+                container.innerHTML = "<p>Error fetching details.</p>";
+                console.error(err);
             }
-
-            // After the main content is set, load supplementary content.
-            renderCast(credits);
-            await renderReviews();
-            await fetchRecommendations();
-
-        } catch (err) {
-            container.innerHTML = "<p>Error: Could not fetch content details.</p>";
-            console.error("Details page fetch error:", err);
         }
-    }
 
-    /**
-     * Builds the main HTML structure, adding specific IDs for elements that will be updated.
-     */
-    function renderDetails(data, certification) {
-        const title = data.title || data.name;
-        const year = (data.release_date || data.first_air_date || "").split("-")[0] || "Unknown";
-        const genres = data.genres?.map(g => g.name).join('<span>|</span>') || "Unknown";
-        const rating = data.vote_average?.toFixed(1) || "N/A";
-        const poster = data.poster_path ? `${IMG_URL}${data.poster_path}` : "https://i.imgur.com/YyHsyEr.png";
-        const backdrop = data.backdrop_path ? `https://image.tmdb.org/t/p/original${data.backdrop_path}` : "";
-        const metaType = type === "tv" ? "TV" : "Movie";
+        function renderFullPage(data) {
+            const certification = getCertification(data);
+            
+            // Render the main static structure
+            renderDetails(data, certification);
 
-        // **KEY FIXES**: Added `id="detail-poster"`, `id="detail-title"`, `id="detail-year"`,
-        // and a stable class `watch-now-btn` for reliable selection.
-        container.innerHTML = `
-            <div class="detail-wrap">
-                <div class="info-rating-wrapper">
-                    <div class="poster" style="--backdrop-url: url('${backdrop}')">
-                        <img id="detail-poster" src="${poster}" alt="${title}" />
-                    </div>
-                    <div class="info">
-                        <h1 id="detail-title">${title}</h1>
-                        <div class="meta">${metaType} <span>|</span> <span id="detail-year">${year}</span> <span>|</span> ${certification}</div>
-                        <p class="tagline">${data.overview || "No synopsis available."}</p>
-                        <div class="buttons">
-                            <button class="watch watch-now-btn" onclick="goToPlayer()"><i class="bi bi-play-fill"></i> Watch Now</button>
-                            <button class="bookmark" onclick="bookmarkItem()"><i class="bi bi-bookmark"></i> Add to Watchlist</button>
+            // Render dynamic/interactive parts
+            if (data.seasons) { // It's a TV show
+                renderSeasonButtons();
+                const initialSeason = allSeasonsData.find(s => s.season_number > 0) || allSeasonsData[0];
+                if (initialSeason) {
+                    updateViewForSeason(initialSeason.season_number);
+                }
+            } else if (data.belongs_to_collection) { // It's a movie in a collection
+                renderMovieCollection(data.belongs_to_collection.id, data.id);
+            } else { // It's a standalone movie
+                renderSingleMovieView(data.id);
+            }
+            
+            renderCast(data.credits);
+            fetchRecommendations(data.id, data.title ? 'movie' : 'tv');
+        }
+
+        function renderDetails(data, certification) {
+            const title = data.title || data.name;
+            const year = (data.release_date || data.first_air_date || "").split("-")[0] || "N/A";
+            const genres = data.genres?.map(g => g.name).join('<span>|</span>') || "N/A";
+            const overview = data.overview || "No synopsis available.";
+            const poster = data.poster_path ? `${IMG_URL}${data.poster_path}` : "https://i.imgur.com/YyHsyEr.png";
+            const backdrop = data.backdrop_path ? `https://image.tmdb.org/t/p/original${data.backdrop_path}` : "";
+
+            container.innerHTML = `
+                <div class="detail-wrap" style="--backdrop-url: url('${backdrop}')">
+                    <div class="info-rating-wrapper">
+                        <div class="poster"><img id="detail-poster" src="${poster}" alt="${title}"></div>
+                        <div class="info">
+                            <h1 id="detail-title">${title}</h1>
+                            <div class="meta">
+                                <span>${data.seasons ? 'TV' : 'Movie'}</span> | 
+                                <span id="detail-year">${year}</span> | 
+                                <span>${certification}</span> | 
+                                <span>${genres}</span>
+                            </div>
+                            <p class="tagline">${overview}</p>
+                            <div class="buttons">
+                                <button class="watch watch-now-btn"><i class="bi bi-play-fill"></i> Watch Now</button>
+                                <button class="bookmark"><i class="bi bi-bookmark"></i> Add to Watchlist</button>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-            <div class="episode-placeholder" id="section-episodes"><h3>Episodes</h3><div class="episode-wrapper"><div id="season-buttons" class="season-wrap"></div><div id="episode-buttons" class="episode-wrap"></div></div></div>
-            <div class="details-extra-section"><div class="left-column"><div id="cast-list"></div></div><div class="right-column"><div id="more-like-grid"></div></div></div>`;
-    }
+                <div class="episode-placeholder" id="section-episodes"><h3>Episodes</h3><div class="episode-wrapper"><div id="season-buttons" class="season-wrap"></div><div id="episode-buttons" class="episode-wrap"></div></div></div>
+                <div class="details-extra-section"><div class="left-column" id="cast-list-container"></div><div class="right-column"><h3>More Like This</h3><div id="more-like-grid"></div></div></div>`;
 
-    /**
-     * **THE CORE OF THE SOLUTION**
-     * This single function handles all UI changes when a new season is selected.
-     */
-    async function handleSeasonChange(seasonNum) {
-        const seasonData = allSeasonsData.find(s => s.season_number === seasonNum);
-        if (!seasonData) return;
+            container.querySelector('.watch-now-btn').addEventListener('click', goToPlayer);
+            container.querySelector('.bookmark').addEventListener('click', () => bookmarkItem(data));
+        }
 
-        // 1. Get direct references to the elements that need to change.
-        const posterEl = document.getElementById("detail-poster");
-        const yearEl = document.getElementById("detail-year");
-        const titleEl = document.getElementById("detail-title");
-        const watchBtn = document.querySelector(".watch-now-btn");
+        function renderSeasonButtons() {
+            const seasonBtnWrap = document.getElementById("season-buttons");
+            if (!seasonBtnWrap) return;
+            seasonBtnWrap.innerHTML = allSeasonsData
+                .filter(s => s.season_number > 0)
+                .map(s => `<button class="ep-btn season-btn" data-season-number="${s.season_number}">S${s.season_number}</button>`)
+                .join('');
+            seasonBtnWrap.querySelectorAll('.season-btn').forEach(btn => {
+                btn.addEventListener('click', () => updateViewForSeason(btn.dataset.seasonNumber));
+            });
+        }
 
-        // 2. Update Poster, Year, and Title using the season's data.
-        posterEl.src = seasonData.poster_path ? `${IMG_URL}${seasonData.poster_path}` : `${IMG_URL}${originalShowData.poster_path}`;
-        yearEl.textContent = seasonData.air_date ? seasonData.air_date.split('-')[0] : originalShowData.year;
-        titleEl.textContent = `${originalShowData.title} - ${seasonData.name}`;
+        function updateViewForSeason(seasonNum) {
+            const seasonData = allSeasonsData.find(s => s.season_number == seasonNum);
+            if (!seasonData) return;
 
-        // 3. **CRUCIAL**: Update the 'Watch Now' button's data attribute to store the current season.
-        if (watchBtn) watchBtn.dataset.season = seasonNum;
+            document.getElementById("detail-poster").src = seasonData.poster_path ? `${IMG_URL}${seasonData.poster_path}` : `${IMG_URL}${originalShowData.poster_path}`;
+            document.getElementById("detail-year").textContent = seasonData.air_date ? seasonData.air_date.split('-')[0] : originalShowData.year;
+            document.getElementById("detail-title").textContent = `${originalShowData.title} - ${seasonData.name}`;
 
-        // 4. Update the 'active' class on the season buttons.
-        document.querySelectorAll(".season-btn").forEach(btn => {
-            btn.classList.toggle("active", btn.dataset.seasonNumber == seasonNum);
-        });
+            const watchBtn = container.querySelector('.watch-now-btn');
+            watchBtn.dataset.type = 'tv';
+            watchBtn.dataset.id = originalShowData.id;
+            watchBtn.dataset.season = seasonNum;
+
+            document.querySelectorAll(".season-btn").forEach(btn => btn.classList.remove('active'));
+            document.querySelector(`.season-btn[data-season-number="${seasonNum}"]`).classList.add('active');
+            
+            renderEpisodesForSeason(originalShowData.id, seasonNum);
+        }
+
+        async function renderEpisodesForSeason(showId, seasonNum) {
+            const episodeWrap = document.getElementById("episode-buttons");
+            episodeWrap.innerHTML = '<span>Loading...</span>';
+            const res = await fetch(`${BASE_URL}/tv/${showId}/season/${seasonNum}?api_key=${API_KEY}&language=en-US`);
+            const data = await res.json();
+            episodeWrap.innerHTML = (data.episodes || [])
+                .map(ep => `<a class="btn episode-btn" href="/p/player.html?id=${showId}&type=tv&season=${seasonNum}&ep=${ep.episode_number}">${String(ep.episode_number).padStart(2, '0')}</a>`)
+                .join('');
+        }
         
-        // 5. Fetch and render the episode list for this new season.
-        await renderEpisodes(seasonNum);
-    }
-
-    /**
-     * Creates the season selection buttons (S1, S2, etc.).
-     */
-    function renderSeasonsButtons(seasons) {
-        const seasonBtnWrap = document.getElementById("season-buttons");
-        seasonBtnWrap.innerHTML = "";
-        (seasons || []).forEach(season => {
-            if (season.season_number === 0) return; // Skip "Specials" season
-            const btn = document.createElement("button");
-            btn.className = "ep-btn season-btn";
-            btn.textContent = `S${season.season_number}`;
-            btn.dataset.seasonNumber = season.season_number;
-            btn.onclick = () => handleSeasonChange(season.season_number);
-            seasonBtnWrap.appendChild(btn);
-        });
-    }
-
-    /**
-     * Fetches and displays the episode buttons for a specific season.
-     */
-    async function renderEpisodes(seasonNum) {
-        const res = await fetch(`${BASE_URL}/tv/${id}/season/${seasonNum}?api_key=${API_KEY}&language=en-US`);
-        const data = await res.json();
-        const episodeWrap = document.getElementById("episode-buttons");
-        episodeWrap.innerHTML = ""; // Clear previous episode list
-
-        if (!data.episodes || data.episodes.length === 0) {
-            episodeWrap.innerHTML = "<p>No episodes available for this season.</p>";
-            return;
+        async function renderMovieCollection(collectionId, currentMovieId) {
+            const res = await fetch(`${BASE_URL}/collection/${collectionId}?api_key=${API_KEY}`);
+            const collectionData = await res.json();
+            const parts = (collectionData.parts || []).sort((a, b) => new Date(a.release_date) - new Date(b.release_date));
+            
+            const seasonBtnWrap = document.getElementById("season-buttons");
+            seasonBtnWrap.innerHTML = parts
+                .map((part, i) => `<a href="/p/details.html?id=${part.id}&type=movie" class="ep-btn season-btn ${part.id == currentMovieId ? 'active' : ''}">Part ${i + 1}</a>`)
+                .join('');
+            
+            renderSingleMovieView(currentMovieId);
         }
 
-        (data.episodes || []).forEach(ep => {
-            const btn = document.createElement("a");
-            btn.className = "btn episode-btn";
-            btn.textContent = String(ep.episode_number).padStart(2, "0");
-            // The link is always correct because `seasonNum` is passed directly.
-            btn.href = `/p/player.html?id=${id}&type=tv&season=${seasonNum}&ep=${ep.episode_number}`;
-            episodeWrap.appendChild(btn);
-        });
-    }
-
-    // --- Global Functions (attached to window for HTML onclick) ---
-
-    /**
-     * **FIXED**: Reads the dynamic season number from the button's data attribute.
-     */
-    window.goToPlayer = function() {
-        const watchBtn = document.querySelector('.watch-now-btn');
-        if (!id || !type || !watchBtn) return;
-
-        if (type === 'tv') {
-            // Read the season from the button's state, not by searching the DOM again.
-            const season = watchBtn.dataset.season || '1';
-            window.location.href = `/p/player.html?id=${id}&type=tv&season=${season}&ep=1`;
-        } else {
-            // Movie logic is unchanged.
-            window.location.href = `/p/player.html?id=${id}&type=movie`;
+        function renderSingleMovieView(movieId) {
+            document.getElementById("episode-buttons").innerHTML = `<a class="btn episode-btn" href="/p/player.html?id=${movieId}&type=movie">01</a>`;
+            const watchBtn = container.querySelector('.watch-now-btn');
+            watchBtn.dataset.type = 'movie';
+            watchBtn.dataset.id = movieId;
         }
-    }
 
-    /**
-     * Handles adding an item to the bookmark list.
-     */
-    window.bookmarkItem = function() {
-        const title = document.getElementById("detail-title")?.innerText;
-        const poster = document.getElementById("detail-poster")?.src;
-        if (!id || !type || !title) return;
+        function goToPlayer() {
+            const btn = container.querySelector('.watch-now-btn');
+            const mediaType = btn.dataset.type;
+            const contentId = btn.dataset.id;
+            if (!mediaType || !contentId) return;
+
+            if (mediaType === 'tv') {
+                const season = btn.dataset.season || '1';
+                window.location.href = `/p/player.html?id=${contentId}&type=tv&season=${season}&ep=1`;
+            } else {
+                window.location.href = `/p/player.html?id=${contentId}&type=movie`;
+            }
+        }
         
-        const bookmarks = JSON.parse(localStorage.getItem("abefilm_bookmarks") || "[]");
-        if (bookmarks.some(item => item.id === id && item.type === type)) {
-            showToastNotification("Already on your watchlist", 'info');
-            return;
+        function bookmarkItem(data) {
+            const bookmarks = JSON.parse(localStorage.getItem("abefilm_bookmarks") || "[]");
+            const itemType = data.seasons ? 'tv' : 'movie';
+            if (bookmarks.some(item => item.id == data.id)) {
+                showToastNotification("Already on your watchlist", 'info');
+                return;
+            }
+            bookmarks.push({ id: data.id, type: itemType, title: data.title || data.name, poster: data.poster_path ? IMG_URL + data.poster_path : '', url: window.location.href });
+            localStorage.setItem("abefilm_bookmarks", JSON.stringify(bookmarks));
+            showToastNotification("Added to Watchlist", 'success');
+            updateBookmarkCount();
         }
-        bookmarks.push({ id, type, title, poster, url: window.location.pathname + window.location.search });
-        localStorage.setItem("abefilm_bookmarks", JSON.stringify(bookmarks));
-        showToastNotification("Added to Watchlist", 'success');
-        updateBookmarkCount();
+
+        function getCertification(data) {
+            const contentType = data.seasons ? 'tv' : 'movie';
+            if (contentType === "movie") {
+                const us = data.release_dates?.results.find(r => r.iso_3166_1 === "US");
+                return us?.release_dates?.[0]?.certification || "NR";
+            } else {
+                const us = data.content_ratings?.results.find(r => r.iso_3166_1 === "US");
+                return us?.rating || "NR";
+            }
+        }
+
+        function renderCast(credits) {
+            const castContainer = document.getElementById("cast-list-container");
+            const cast = credits?.cast?.slice(0, 15) || [];
+            if (castContainer && cast.length > 0) {
+                castContainer.innerHTML = `<h3>Top Cast</h3><div class="cast-scroll">${cast.map(c => `<div class="cast-card"><img src="${c.profile_path ? IMG_URL + c.profile_path : 'https://i.imgur.com/obaaZjk.png'}" alt="${c.name}"><div>${c.name}</div><small>${c.character}</small></div>`).join('')}</div>`;
+            }
+        }
+
+        async function fetchRecommendations(recId, recType) {
+            const wrap = document.getElementById("more-like-grid");
+            if (!wrap) return;
+            try {
+                const res = await fetch(`${BASE_URL}/${recType}/${recId}/recommendations?api_key=${API_KEY}&language=en-US`);
+                const data = await res.json();
+                if (!data.results || data.results.length === 0) {
+                    wrap.innerHTML = "<p>No recommendations available.</p>"; return;
+                }
+                wrap.innerHTML = data.results.slice(0, 6).map(item => {
+                    const itemType = item.media_type || (item.first_air_date ? 'tv' : 'movie');
+                    return `<a class="more-like-item" href="/p/details.html?id=${item.id}&type=${itemType}"><img src="${item.poster_path ? IMG_URL + item.poster_path : 'https://i.imgur.com/YyHsyEr.png'}" alt="${item.title || item.name}"><p>${item.title || item.name}</p></a>`;
+                }).join('');
+            } catch (error) { wrap.innerHTML = "<p>Failed to load recommendations.</p>"; }
+        }
+
+        fetchData(id, type);
     }
-    
-    // --- Other Helper Functions (unchanged logic, just organized) ---
-    function getCertification(type, data) { /* ... (logic from original code) ... */ }
-    async function renderMovieEpisode(movieId) { /* ... (logic from original code) ... */ }
-    function renderCast(credits) { /* ... (logic from original code) ... */ }
-    async function renderReviews() { /* ... (logic from original code) ... */ }
-    async function fetchRecommendations() { /* ... (logic from original code) ... */ }
-
-
-    // --- Start the entire process for the details page ---
-    fetchData();
-}
     
     // ===================================================================
     // 4. PLAYER PAGE-SPECIFIC CODE
