@@ -11,12 +11,12 @@ document.addEventListener('DOMContentLoaded', function () {
   const isHomepage = location.pathname === "/" ||
                      location.pathname.endsWith("/index.html") ||
                      (location.hostname.includes("blogspot.com") && !location.pathname.includes("/p/"));
-  const isDetailsPage = path.includes('/details.html');
-  const isPlayerPage = path.includes('/player.html');
-  const isLibraryPage = path.includes('/library.html');
-  const isAboutPage = path.includes('/about-us.html');
-  const isPrivacyPage = path.includes('/privacy-policy.html');
-  const isDisclaimerPage = path.includes('/disclaimer.html');
+  const isDetailsPage = path.includes('/p/details.html');
+  const isPlayerPage = path.includes('/p/player.html');
+  const isLibraryPage = path.includes('/p/library.html');
+  const isAboutPage = path.includes('/p/about-us.html');
+  const isPrivacyPage = path.includes('/p/privacy-policy.html');
+  const isDisclaimerPage = path.includes('/p/disclaimer.html');
 
 
   // ---= 2. DYNAMIC CONTENT INJECTION (from Widgets) =---
@@ -217,18 +217,3 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
 }); // End of DOMContentLoaded
-
-
-// --- GLOBAL CLICK LISTENER FOR DELEGATED EVENTS ---
-document.addEventListener("click", function (e) {
-  // Cast Scroller Buttons
-  if (e.target.classList.contains("cast-scroll-btn")) {
-    const scrollContainer = e.target.closest(".cast-scroll-wrapper")?.querySelector(".cast-scroll");
-    if (scrollContainer) {
-      const direction = e.target.classList.contains("left") ? -1 : 1;
-      const card = scrollContainer.querySelector('.cast-card');
-      const scrollAmount = (card ? card.offsetWidth * 2.5 : 200);
-      scrollContainer.scrollBy({ left: direction * scrollAmount, behavior: "smooth" });
-    }
-  }
-});
