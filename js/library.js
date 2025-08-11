@@ -1,4 +1,4 @@
-  document.addEventListener("DOMContentLoaded", function () {
+document.addEventListener("DOMContentLoaded", function () {
   
   // This is the main function that contains all of your page logic.
   // It will only be called after the API key is safely available.
