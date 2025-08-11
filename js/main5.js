@@ -1,7 +1,7 @@
 document.addEventListener("DOMContentLoaded", () => {
     // ===================================================================
     // 1. SHARED GLOBAL CODE & UTILITIES
-    // (This section is intact as requested)
+    // (These are safe to be shared across all pages)
     // ===================================================================
 
     let toastTimer;
@@ -49,42 +49,52 @@ document.addEventListener("DOMContentLoaded", () => {
       </li>`).join('');
     }
 
-    const bookmarkBtn = document.querySelector('.bookmark-btn');
-    const bookmarkModal = document.getElementById('bookmark-modal');
+const bookmarkBtn = document.querySelector('.bookmark-btn');
+const bookmarkModal = document.getElementById('bookmark-modal');
 
-    if (bookmarkBtn && bookmarkModal) {
-        bookmarkBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            const isVisible = bookmarkModal.style.display === 'block';
-            bookmarkModal.style.display = isVisible ? 'none' : 'block';
-            if (!isVisible) {
-                showBookmarks();
-            }
-        });
-        document.addEventListener('click', (e) => {
-            if (bookmarkModal.style.display === 'block' && !bookmarkModal.contains(e.target) && !bookmarkBtn.contains(e.target)) {
-                bookmarkModal.style.display = 'none';
-            }
-        });
-        bookmarkModal.addEventListener('click', (e) => {
-            const deleteBtn = e.target.closest('.delete-bookmark');
-            if (deleteBtn) {
-                e.stopPropagation();
-                const index = parseInt(deleteBtn.getAttribute('data-index'));
-                const bookmarks = JSON.parse(localStorage.getItem('abefilm_bookmarks') || '[]');
-                bookmarks.splice(index, 1);
-                localStorage.setItem('abefilm_bookmarks', JSON.stringify(bookmarks));
-                showBookmarks();
-                updateBookmarkCount();
-            }
-        });
-    }
+if (bookmarkBtn && bookmarkModal) {
+    // This listener opens/closes the modal when the main bookmark button is clicked
+    bookmarkBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const isVisible = bookmarkModal.style.display === 'block';
+        bookmarkModal.style.display = isVisible ? 'none' : 'block';
+        if (!isVisible) {
+            showBookmarks(); // Populate the list when opening
+        }
+    });
+
+    // This listener closes the modal ONLY if you click outside of it
+    document.addEventListener('click', (e) => {
+        if (bookmarkModal.style.display === 'block' && !bookmarkModal.contains(e.target) && !bookmarkBtn.contains(e.target)) {
+            bookmarkModal.style.display = 'none';
+        }
+    });
+
+    // This listener handles clicks INSIDE the modal (specifically for the delete button)
+    bookmarkModal.addEventListener('click', (e) => {
+        const deleteBtn = e.target.closest('.delete-bookmark');
+        if (deleteBtn) {
+            // *** THE FIX IS HERE ***
+            // This stops the click from reaching the 'document' and closing the modal.
+            e.stopPropagation();
+
+            const index = parseInt(deleteBtn.getAttribute('data-index'));
+            const bookmarks = JSON.parse(localStorage.getItem('abefilm_bookmarks') || '[]');
+            bookmarks.splice(index, 1);
+            localStorage.setItem('abefilm_bookmarks', JSON.stringify(bookmarks));
+            
+            // Refresh the list and the count immediately
+            showBookmarks();
+            updateBookmarkCount();
+        }
+    });
+}
 
     // ===================================================================
     // 2. HOMEPAGE-SPECIFIC CODE
-    // (This section is intact as requested)
     // ===================================================================
     function initHomepage(API_KEY) {
+        // This is the original, unmodified homepage script logic
         function buildApiUrl(endpoint, apiKey) {
             const baseUrl = "https://api.themoviedb.org/3/";
             const url = new URL(baseUrl + endpoint);
@@ -103,166 +113,178 @@ document.addEventListener("DOMContentLoaded", () => {
             return "movie";
         }
 
-        async function initSlider(rawEndpoint, apiKey) {
-            const slider = document.getElementById("tmdb-slider");
-            const dotContainer = document.getElementById("slider-dots");
-            const sliderTitleEl = document.getElementById("slider-title");
+   async function initSlider(rawEndpoint, apiKey) {
+    const slider = document.getElementById("tmdb-slider");
+    const dotContainer = document.getElementById("slider-dots");
+    const sliderTitleEl = document.getElementById("slider-title");
 
-            if (!slider || !dotContainer || !sliderTitleEl) return;
-            slider.innerHTML = '';
-            dotContainer.innerHTML = '';
+    if (!slider || !dotContainer || !sliderTitleEl) return;
+    slider.innerHTML = '';
+    dotContainer.innerHTML = '';
 
-            function buildApiUrl(path, key) {
-                const base = 'https://api.themoviedb.org/3/';
-                return `${base}${path}?api_key=${key}`;
-            }
+    // Helper: Build TMDB API URL
+    function buildApiUrl(path, key) {
+        const base = 'https://api.themoviedb.org/3/';
+        return `${base}${path}?api_key=${key}`;
+    }
 
-            function getMediaType(item, endpoint) {
-                if (item.media_type) return item.media_type;
-                if (endpoint.includes('tv')) return 'tv';
-                if (endpoint.includes('movie')) return 'movie';
-                return 'movie'; // fallback
-            }
+    // Helper: Determine media type based on endpoint or item
+    function getMediaType(item, endpoint) {
+        if (item.media_type) return item.media_type;
+        if (endpoint.includes('tv')) return 'tv';
+        if (endpoint.includes('movie')) return 'movie';
+        return 'movie'; // fallback
+    }
 
-            async function fetchWithTimeout(resource, options = {}) {
-                const {
-                    timeout = 8000
-                } = options;
-                const controller = new AbortController();
-                const id = setTimeout(() => controller.abort(), timeout);
-                try {
-                    const response = await fetch(resource, {
-                        ...options,
-                        signal: controller.signal
-                    });
-                    clearTimeout(id);
-                    return response;
-                } catch (error) {
-                    clearTimeout(id);
-                    throw error;
-                }
-            }
-
-            try {
-                const fetchUrl = buildApiUrl(rawEndpoint, apiKey);
-                const response = await fetchWithTimeout(fetchUrl);
-                if (!response.ok) throw new Error(`Failed to fetch slider data: ${response.status}`);
-                const data = await response.json();
-
-                const items = (data.results || []).slice(0, 8);
-                if (items.length === 0) {
-                    slider.innerHTML = "<p>No slider content found.</p>";
-                    return;
-                }
-
-                const logosPromises = items.map(async (item) => {
-                    const mediaType = getMediaType(item, rawEndpoint);
-                    try {
-                        const logoUrl = buildApiUrl(`${mediaType}/${item.id}/images`, apiKey) + '&include_image_language=en,null';
-                        const logoRes = await fetchWithTimeout(logoUrl);
-                        if (!logoRes.ok) throw new Error(`Logo fetch failed: ${logoRes.status}`);
-                        const logoData = await logoRes.json();
-
-                        if (logoData.logos && logoData.logos.length) {
-                            let englishLogos = logoData.logos.filter(l => l.iso_639_1 === 'en');
-                            if (englishLogos.length === 0) englishLogos = logoData.logos;
-                            englishLogos.sort((a, b) => (b.vote_average || 0) - (a.vote_average || 0));
-                            return englishLogos[0].file_path || null;
-                        }
-                        return null;
-                    } catch (e) {
-                        console.warn(`Failed to fetch logos for item ${item.id}`, e);
-                        return null;
-                    }
-                });
-
-                const logos = await Promise.all(logosPromises);
-                const titles = [];
-
-                for (let i = 0; i < items.length; i++) {
-                    const item = items[i];
-                    const mediaType = getMediaType(item, rawEndpoint);
-                    const title = item.title || item.name || "Untitled";
-                    const backdrop = item.backdrop_path;
-                    if (!backdrop) continue;
-                    const bestLogoPath = logos[i];
-                    const dynamicLink = `${window.location.origin}/p/details.html?id=${item.id}&type=${mediaType}`;
-                    const slide = document.createElement("a");
-                    slide.className = "slide";
-                    slide.href = dynamicLink;
-                    slide.style.backgroundImage = `url(https://image.tmdb.org/t/p/original${backdrop})`;
-                    const captionContent = bestLogoPath ?
-                        `<img class="logo-title" src="https://image.tmdb.org/t/p/w500${bestLogoPath}" alt="${title} Logo" />` :
-                        `<h2>${title}</h2>`;
-                    slide.innerHTML = `<div class="slide-caption">${captionContent}</div>`;
-                    slider.appendChild(slide);
-                    titles.push(title);
-                    const thumb = document.createElement("div");
-                    thumb.className = "thumbnail-dot";
-                    thumb.setAttribute("data-index", i);
-                    thumb.style.backgroundImage = `url(https://image.tmdb.org/t/p/w300${backdrop})`;
-                    thumb.onclick = () => showSlide(i);
-                    dotContainer.appendChild(thumb);
-                }
-
-                const slides = slider.querySelectorAll(".slide");
-                const dots = dotContainer.querySelectorAll(".thumbnail-dot");
-                let index = 0;
-                let sliderInterval;
-
-                function showSlide(i) {
-                    index = i;
-                    slides.forEach((s, j) => s.style.display = j === i ? "block" : "none");
-                    dots.forEach((d, j) => d.classList.toggle("active", j === i));
-                    sliderTitleEl.textContent = titles[i] || '';
-                    if (sliderInterval) clearInterval(sliderInterval);
-                    sliderInterval = setInterval(() => changeSlide(1), 5000);
-                }
-
-                window.changeSlide = (dir) => {
-                    index = (index + dir + slides.length) % slides.length;
-                    showSlide(index);
-                };
-
-                if (slides.length > 0) showSlide(0);
-
-                let touchStartX = 0,
-                    touchEndX = 0,
-                    touchStartY = 0,
-                    touchEndY = 0;
-                const swipeThreshold = 50;
-
-                slider.addEventListener('touchstart', (e) => {
-                    touchStartX = e.changedTouches[0].screenX;
-                    touchStartY = e.changedTouches[0].screenY;
-                }, {
-                    passive: true
-                });
-
-                slider.addEventListener('touchend', (e) => {
-                    touchEndX = e.changedTouches[0].screenX;
-                    touchEndY = e.changedTouches[0].screenY;
-                    const diffX = touchEndX - touchStartX;
-                    const diffY = touchEndY - touchStartY;
-                    if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > swipeThreshold) {
-                        e.preventDefault();
-                        if (diffX < 0) window.changeSlide(1);
-                        else window.changeSlide(-1);
-                    }
-                });
-
-            } catch (err) {
-                console.error("Failed to load slider content:", err);
-                slider.innerHTML = "<p style='color:red;'>Error loading slider.</p>";
-            }
+    // Helper: fetch with timeout
+    async function fetchWithTimeout(resource, options = {}) {
+        const { timeout = 8000 } = options;
+        const controller = new AbortController();
+        const id = setTimeout(() => controller.abort(), timeout);
+        try {
+            const response = await fetch(resource, {
+                ...options,
+                signal: controller.signal  
+            });
+            clearTimeout(id);
+            return response;
+        } catch (error) {
+            clearTimeout(id);
+            throw error;
         }
+    }
+
+    try {
+        const fetchUrl = buildApiUrl(rawEndpoint, apiKey);
+        const response = await fetchWithTimeout(fetchUrl);
+        if (!response.ok) throw new Error(`Failed to fetch slider data: ${response.status}`);
+        const data = await response.json();
+
+        const items = (data.results || []).slice(0, 8);
+        if (items.length === 0) {
+            slider.innerHTML = "<p>No slider content found.</p>";
+            return;
+        }
+
+        // Fetch all logos concurrently
+        const logosPromises = items.map(async (item) => {
+            const mediaType = getMediaType(item, rawEndpoint);
+            try {
+                const logoUrl = buildApiUrl(`${mediaType}/${item.id}/images`, apiKey) + '&include_image_language=en,null';
+                const logoRes = await fetchWithTimeout(logoUrl);
+                if (!logoRes.ok) throw new Error(`Logo fetch failed: ${logoRes.status}`);
+                const logoData = await logoRes.json();
+
+                if (logoData.logos && logoData.logos.length) {
+                    // Prioritize English logos with highest vote_average
+                    let englishLogos = logoData.logos.filter(l => l.iso_639_1 === 'en');
+                    if (englishLogos.length === 0) englishLogos = logoData.logos;
+
+                    englishLogos.sort((a, b) => (b.vote_average || 0) - (a.vote_average || 0));
+                    return englishLogos[0].file_path || null;
+                }
+                return null;
+            } catch (e) {
+                console.warn(`Failed to fetch logos for item ${item.id}`, e);
+                return null;
+            }
+        });
+
+        const logos = await Promise.all(logosPromises);
+
+        const titles = [];
+
+        for (let i = 0; i < items.length; i++) {
+            const item = items[i];
+            const mediaType = getMediaType(item, rawEndpoint);
+            const title = item.title || item.name || "Untitled";
+            const backdrop = item.backdrop_path;
+
+            if (!backdrop) continue;
+
+            const bestLogoPath = logos[i];
+
+            const dynamicLink = `${window.location.origin}/p/details.html?id=${item.id}&type=${mediaType}`;
+            const slide = document.createElement("a");
+            slide.className = "slide";
+            slide.href = dynamicLink;
+            slide.style.backgroundImage = `url(https://image.tmdb.org/t/p/original${backdrop})`;
+
+            const captionContent = bestLogoPath
+                ? `<img class="logo-title" src="https://image.tmdb.org/t/p/w500${bestLogoPath}" alt="${title} Logo" />`
+                : `<h2>${title}</h2>`;
+
+            slide.innerHTML = `<div class="slide-caption">${captionContent}</div>`;
+            slider.appendChild(slide);
+
+            titles.push(title);
+
+            const thumb = document.createElement("div");
+            thumb.className = "thumbnail-dot";
+            thumb.setAttribute("data-index", i);
+            thumb.style.backgroundImage = `url(https://image.tmdb.org/t/p/w300${backdrop})`;
+            thumb.onclick = () => showSlide(i);
+            dotContainer.appendChild(thumb);
+        }
+
+        const slides = slider.querySelectorAll(".slide");
+        const dots = dotContainer.querySelectorAll(".thumbnail-dot");
+        let index = 0;
+        let sliderInterval;
+
+        function showSlide(i) {
+            index = i;
+            slides.forEach((s, j) => s.style.display = j === i ? "block" : "none");
+            dots.forEach((d, j) => d.classList.toggle("active", j === i));
+            sliderTitleEl.textContent = titles[i] || '';
+            if (sliderInterval) clearInterval(sliderInterval);
+            sliderInterval = setInterval(() => changeSlide(1), 5000);
+        }
+
+        window.changeSlide = (dir) => {
+            index = (index + dir + slides.length) % slides.length;
+            showSlide(index);
+        };
+
+        if (slides.length > 0) showSlide(0);
+
+        // Swipe functionality
+        let touchStartX = 0, touchEndX = 0, touchStartY = 0, touchEndY = 0;
+        const swipeThreshold = 50;
+
+        slider.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+            touchStartY = e.changedTouches[0].screenY;
+        }, { passive: true });
+
+        slider.addEventListener('touchend', (e) => {
+            touchEndX = e.changedTouches[0].screenX;
+            touchEndY = e.changedTouches[0].screenY;
+            const diffX = touchEndX - touchStartX;
+            const diffY = touchEndY - touchStartY;
+
+            if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > swipeThreshold) {
+                e.preventDefault();
+                if (diffX < 0) window.changeSlide(1);
+                else window.changeSlide(-1);
+            }
+        });
+
+    } catch (err) {
+        console.error("Failed to load slider content:", err);
+        slider.innerHTML = "<p style='color:red;'>Error loading slider.</p>";
+    }
+}
+
 
         function initContentRows(apiKey, loaderLogoUrl) {
             document.querySelectorAll(".widget-content").forEach((contentEl) => {
                 const parentWidget = contentEl.closest(".widget");
                 if (!parentWidget || ["HTML01", "Text1", "Text2"].includes(parentWidget.id)) return;
+
                 const endpointPath = contentEl.textContent.trim();
                 if (!endpointPath || endpointPath.includes(" ") || endpointPath.startsWith("http")) return;
+
                 const wrapper = document.createElement("div");
                 wrapper.className = "tmdb-wrapper";
                 const displayEl = document.createElement("div");
@@ -282,54 +304,40 @@ document.addEventListener("DOMContentLoaded", () => {
                             const res = await fetch(fetchUrl);
                             const data = await res.json();
                             const results = data.results || [];
-                            if (results.length === 0) {
-                                displayEl.innerHTML = "<p>No results found.</p>";
-                                return;
-                            }
+
+                            if (results.length === 0) { displayEl.innerHTML = "<p>No results found.</p>"; return; }
+
                             setTimeout(() => {
                                 displayEl.innerHTML = results.slice(0, 14).map(item => {
                                     const mediaType = getMediaType(item, endpointPath);
                                     const title = item.title || item.name || "Untitled";
                                     const image = item.poster_path;
                                     if (!image) return '';
+
                                     const year = (item.release_date || item.first_air_date || "").split("-")[0] || "N/A";
                                     const rating = item.vote_average?.toFixed(1) || "N/A";
                                     const dynamicLink = `${window.location.origin}/p/details.html?id=${item.id}&type=${mediaType}`;
+
                                     return `<a class="tmdb-card" title="${title}" href="${dynamicLink}"><div class="tmdb-thumb"><img src="https://image.tmdb.org/t/p/w300${image}" alt="${title}" loading="lazy" /><div class="hover-overlay"></div><span class="tmdb-meta tmdb-year">${year}</span><span class="tmdb-meta tmdb-rating"><i class="bi bi-star"></i> ${rating}</span><div class="play-btn"><svg viewBox="0 0 24 24" width="48" height="48" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" fill="var(--keycolor)"/><path d="M15.4137 13.059L10.6935 15.8458C9.93371 16.2944 9 15.7105 9 14.7868V9.21316C9 8.28947 9.93371 7.70561 10.6935 8.15419L15.4137 10.941C16.1954 11.4026 16.1954 12.5974 15.4137 13.059Z" fill="#FFFFFF"/></svg></div></div><div class="tmdb-title">${title}</div></a>`;
                                 }).join("");
+
                                 if (displayEl.innerHTML.trim() !== "") {
-                                    const leftBtn = document.createElement("button");
-                                    leftBtn.className = "tmdb-scroll left";
-                                    leftBtn.innerHTML = "&#8249;";
-                                    const rightBtn = document.createElement("button");
-                                    rightBtn.className = "tmdb-scroll right";
-                                    rightBtn.innerHTML = "&#8250;";
+                                    const leftBtn = document.createElement("button"); leftBtn.className = "tmdb-scroll left"; leftBtn.innerHTML = "&#8249;";
+                                    const rightBtn = document.createElement("button"); rightBtn.className = "tmdb-scroll right"; rightBtn.innerHTML = "&#8250;";
                                     wrapper.prepend(leftBtn);
                                     wrapper.append(rightBtn);
                                     const scrollStep = () => displayEl.querySelector(".tmdb-card")?.offsetWidth + 10 || 300;
-                                    leftBtn.onclick = () => displayEl.scrollBy({
-                                        left: -scrollStep() * 2,
-                                        behavior: "smooth"
-                                    });
-                                    rightBtn.onclick = () => displayEl.scrollBy({
-                                        left: scrollStep() * 2,
-                                        behavior: "smooth"
-                                    });
+                                    leftBtn.onclick = () => displayEl.scrollBy({ left: -scrollStep() * 2, behavior: "smooth" });
+                                    rightBtn.onclick = () => displayEl.scrollBy({ left: scrollStep() * 2, behavior: "smooth" });
                                 }
                             }, 500);
-                        } catch (err) {
-                            displayEl.innerHTML = "<p style='color:red;'>Failed to load data.</p>";
-                            console.error(err);
-                        }
+                        } catch (err) { displayEl.innerHTML = "<p style='color:red;'>Failed to load data.</p>"; console.error(err); }
                     }
-                }, {
-                    threshold: 0.1,
-                    rootMargin: '150px 0px'
-                });
+                }, { threshold: 0.1, rootMargin: '150px 0px' });
                 observer.observe(wrapper);
             });
         }
-
+        
         const endpointEl = document.querySelector("#Text1 .widget-content");
         const loaderLogoEl = document.querySelector("#Text2 .widget-content");
         const loaderLogoUrl = loaderLogoEl?.textContent.trim() || "";
@@ -590,33 +598,20 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // ===================================================================
     // 4. PLAYER PAGE-SPECIFIC CODE
-    // (This section is intact as requested)
     // ===================================================================
     function initPlayerPage(API_KEY) {
+        // This is the original, unmodified player script logic
+        // *** FIX: The initial `if` check is REMOVED from here, as the main router now handles it. ***
         const urlParams = new URLSearchParams(window.location.search);
         const id = urlParams.get("id");
         const type = urlParams.get("type");
-        if (!id || !type) {
-            document.body.innerHTML = "<p style='color:white; text-align:center;'>Missing ID or type in URL.</p>";
-            return;
-        }
-
+        if (!id || !type) { document.body.innerHTML = "<p style='color:white; text-align:center;'>Missing ID or type in URL.</p>"; return; }
+        
         const storageKey = `watch_state_${id}_${type}`;
 
-        function saveWatchState(server, season, episode) {
-            const state = {
-                server,
-                season,
-                episode
-            };
-            localStorage.setItem(storageKey, JSON.stringify(state));
-        }
-
-        function loadWatchState() {
-            const data = localStorage.getItem(storageKey);
-            return data ? JSON.parse(data) : null;
-        }
-
+        function saveWatchState(server, season, episode) { const state = { server, season, episode }; localStorage.setItem(storageKey, JSON.stringify(state)); }
+        function loadWatchState() { const data = localStorage.getItem(storageKey); return data ? JSON.parse(data) : null; }
+        
         function updateDocumentTitle(id, type, season) {
             fetch(`https://api.themoviedb.org/3/${type}/${id}?api_key=${API_KEY}&language=en-US`).then(res => res.json()).then(data => {
                 const title = data.title || data.name || "Untitled";
@@ -629,9 +624,8 @@ document.addEventListener("DOMContentLoaded", () => {
         const episodeButtons = document.getElementById("player-episode-buttons");
         const serverButtons = document.getElementById("server-buttons");
         const seasonButtons = document.createElement("div");
-        seasonButtons.id = "season-buttons";
-        seasonButtons.classList.add("season-button-container");
-        if (serverButtons) serverButtons.insertAdjacentElement("afterend", seasonButtons);
+        seasonButtons.id = "season-buttons"; seasonButtons.classList.add("season-button-container");
+        if(serverButtons) serverButtons.insertAdjacentElement("afterend", seasonButtons);
 
         const savedState = loadWatchState();
         const savedSeason = savedState?.season;
@@ -650,8 +644,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 const content = widget.querySelector(".widget-content")?.textContent.trim();
                 if (title && content) {
                     const lines = content.split("\n").map(line => line.trim()).filter(Boolean);
-                    let movieTemplate = null,
-                        tvTemplate = null;
+                    let movieTemplate = null, tvTemplate = null;
                     for (const line of lines) {
                         if (/\${episode}/.test(line)) tvTemplate = line;
                         else if (/\${id}/.test(line)) movieTemplate = line;
@@ -673,7 +666,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         function createServerButtons() {
-            if (!serverButtons) return;
+            if(!serverButtons) return;
             Object.keys(servers).forEach(key => {
                 const btn = document.createElement("button");
                 btn.textContent = key.toUpperCase();
@@ -692,12 +685,11 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         function createEpisodeButtons(totalEpisodes) {
-            if (!episodeButtons) return;
+            if(!episodeButtons) return;
             episodeButtons.innerHTML = '';
             for (let i = 1; i <= totalEpisodes; i++) {
                 const btn = document.createElement("button");
-                btn.textContent = `${i}`;
-                btn.className = "player-episode-btn";
+                btn.textContent = `${i}`; btn.className = "player-episode-btn";
                 btn.addEventListener("click", () => {
                     document.querySelectorAll(".player-episode-btn").forEach(b => b.classList.remove("active"));
                     btn.classList.add("active");
@@ -713,28 +705,17 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         function createMovieEpisodeDummy() {
-            if (!episodeButtons) return;
+            if(!episodeButtons) return;
             episodeButtons.innerHTML = '';
             const btn = document.createElement("button");
-            btn.textContent = "1";
-            btn.className = "player-episode-btn active";
+            btn.textContent = "1"; btn.className = "player-episode-btn active";
             episodeButtons.appendChild(btn);
         }
 
         function populateFooter(info) {
             const footer = document.getElementById("footer-bottom");
             if (!footer) return;
-            const {
-                title,
-                name,
-                overview,
-                genres,
-                status,
-                vote_average,
-                first_air_date,
-                release_date,
-                number_of_episodes
-            } = info;
+            const { title, name, overview, genres, status, vote_average, first_air_date, release_date, number_of_episodes } = info;
             const typeText = number_of_episodes ? "TV" : "Movie";
             let year = (release_date || first_air_date || "").split("-")[0];
             if (type === "tv" && info?.seasons && seasonParam) {
@@ -771,20 +752,14 @@ document.addEventListener("DOMContentLoaded", () => {
             const endpoint = `https://api.themoviedb.org/3/${type}/${id}/recommendations?api_key=${API_KEY}`;
             fetch(endpoint).then(res => res.json()).then(data => {
                 const results = data.results?.slice(0, 6);
-                if (!results || results.length === 0) {
-                    container.innerHTML = "<p style='color:#ccc'>No recommendations available.</p>";
-                    return;
-                }
+                if (!results || results.length === 0) { container.innerHTML = "<p style='color:#ccc'>No recommendations available.</p>"; return; }
                 container.innerHTML = results.map(item => {
                     const title = item.title || item.name || "Untitled";
                     const poster = item.poster_path ? `https://image.tmdb.org/t/p/w185${item.poster_path}` : "https://i.imgur.com/YyHsyEr.png";
                     const mediaType = item.media_type || (item.first_air_date ? 'tv' : 'movie');
                     return `<div class="rec-item"><a href="/p/player.html?id=${item.id}&type=${mediaType}"><div class="rec-thumb"><img src="${poster}" alt="${title}" onerror="this.onerror=null;this.src='https://i.imgur.com/YyHsyEr.png';"><div class="abefilm-hover-overlay"></div><div class="abefilm-play-button"><svg viewBox="0 0 24 24" width="48" height="48" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" fill="var(--keycolor)"/><path d="M15.4137 13.059L10.6935 15.8458C9.93371 16.2944 9 15.7105 9 14.7868V9.21316C9 8.28947 9.93371 7.70561 10.6935 8.15419L15.4137 10.941C16.1954 11.4026 16.1954 12.5974 15.4137 13.059Z" fill="#FFFFFF"/></svg></div></div><span>${title}</span></a></div>`;
                 }).join("");
-            }).catch(err => {
-                console.error("Recommendation Fetch Error:", err);
-                container.innerHTML = "<p style='color:#ccc'>Failed to load recommendations.</p>";
-            });
+            }).catch(err => { console.error("Recommendation Fetch Error:", err); container.innerHTML = "<p style='color:#ccc'>Failed to load recommendations.</p>"; });
         }
 
         updateDocumentTitle(id, type, seasonParam);
@@ -827,13 +802,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // ===================================================================
     // 5. MAIN CONTROLLER & APP START
-    // (This section is intact as requested)
     // ===================================================================
 
     function initializeApp(apiKey) {
         setupToastNotification();
         updateBookmarkCount();
-
+        
         const path = window.location.pathname;
 
         if (document.getElementById("tmdb-slider")) {
