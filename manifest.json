@@ -5,15 +5,17 @@
   "display": "standalone",
   "background_color": "#111111",
   "theme_color": "#111111",
-  "description": "Stream Kdrama, Cdrama, and more.",
+  "description": "A dynamic movie and TV series website built on the Blogger platform, powered by The Movie Database (TMDB) API. This project enables users to browse, search, and explore movies, TV series, anime, and animations with real-time data fetched directly from TMDB.
+
+",
   "icons": [
     {
-      "src": "icons/icon-192.png",
+      "src": "https://cdn-icons-png.flaticon.com/128/17115/17115490.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "icons/icon-512.png",
+      "src": "https://cdn-icons-png.flaticon.com/128/17115/17115490.png",
       "sizes": "512x512",
       "type": "image/png"
     }
